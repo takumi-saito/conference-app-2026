@@ -2,6 +2,7 @@ package io.github.droidkaigi.confsched.app.widget
 
 import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,7 +27,11 @@ import androidx.glance.unit.ColorProvider
 import io.github.droidkaigi.confsched.R
 import io.github.droidkaigi.confsched.core.designsystem.RoomShape
 import io.github.droidkaigi.confsched.core.designsystem.roomTheme
+import io.github.droidkaigi.confsched.core.model.ConferenceTimeZone
+import io.github.droidkaigi.confsched.core.model.DroidKaigi2026Day
 import io.github.droidkaigi.confsched.core.model.SessionRoom
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Instant
 
 @Composable
 internal fun HeaderRow(label: String, live: Boolean, colors: FavoritesWidgetColors) {
@@ -125,3 +130,24 @@ private fun chipLabel(room: SessionRoom, shape: RoomShape?): String {
     }
     return if (mark == null) room.name else "$mark ${room.name}"
 }
+
+internal val LocalWidgetMascot = staticCompositionLocalOf<WidgetMascot> { error("LocalWidgetMascot is not provided") }
+
+internal data class WidgetMascot(@DrawableRes val resId: Int, private val aspect: Float) {
+    fun width(height: Dp): Dp = height * aspect
+}
+
+private val widgetMascots = listOf(
+    WidgetMascot(R.drawable.widget_mascot_a, 56.68f / 52f),
+    WidgetMascot(R.drawable.widget_mascot_b, 54.85f / 53.03f),
+    WidgetMascot(R.drawable.widget_mascot_c, 48.14f / 54.23f),
+    WidgetMascot(R.drawable.widget_mascot_d, 55.31f / 53.19f),
+    WidgetMascot(R.drawable.widget_mascot_e, 43.69f / 52f),
+    WidgetMascot(R.drawable.widget_mascot_f, 49.16f / 52f),
+)
+
+/** The pick rotates daily, on the conference-timezone date, through all six characters. */
+internal fun dailyWidgetMascot(now: Instant): WidgetMascot =
+    widgetMascots[(now.toLocalDateTime(ConferenceTimeZone).date.toEpochDays() % widgetMascots.size).toInt()]
+
+internal fun previewWidgetMascot(): WidgetMascot = dailyWidgetMascot(DroidKaigi2026Day.Day1.at(hour = 10, minute = 0))

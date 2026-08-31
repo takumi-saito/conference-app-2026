@@ -13,14 +13,41 @@ private let rowHeight: CGFloat = 22
 private let timeCellWidth: CGFloat = 40
 private let maxMediumRows = 3
 
-private let mascotCSize = CGSize(width: 28, height: 30)
-private let mascotBSize = CGSize(width: 37, height: 34)
-private func mascotDSize(medium: Bool) -> CGSize {
-    medium ? CGSize(width: 37, height: 34) : CGSize(width: 33, height: 30)
+private struct DailyMascot {
+    let artwork: WidgetArtwork
+    let aspect: CGFloat
+
+    func size(height: CGFloat) -> CGSize { CGSize(width: height * aspect, height: height) }
 }
 
-private func mascotClearance(medium: Bool) -> CGFloat {
-    medium ? mascotDSize(medium: true).width + gapArt : 0
+private let dailyMascots: [DailyMascot] = [
+    DailyMascot(artwork: WidgetArtworks.mascotA, aspect: 56.68 / 52),
+    DailyMascot(artwork: WidgetArtworks.mascotB, aspect: 54.85 / 53.03),
+    DailyMascot(artwork: WidgetArtworks.mascotC, aspect: 48.14 / 54.23),
+    DailyMascot(artwork: WidgetArtworks.mascotD, aspect: 55.31 / 53.19),
+    DailyMascot(artwork: WidgetArtworks.mascotE, aspect: 43.69 / 52),
+    DailyMascot(artwork: WidgetArtworks.mascotF, aspect: 49.16 / 52),
+]
+
+/// The pick rotates daily, on the conference-timezone date, through all six characters.
+private func dailyMascot(on date: Date) -> DailyMascot {
+    let epochDay = Int(floor((date.timeIntervalSince1970 + 9 * 3600) / 86400))
+    return dailyMascots[((epochDay % dailyMascots.count) + dailyMascots.count) % dailyMascots.count]
+}
+
+private func mascotClearance(medium: Bool, mascot: DailyMascot) -> CGFloat {
+    medium ? mascot.size(height: 34).width + gapArt : 0
+}
+
+private struct WidgetMascotKey: EnvironmentKey {
+    static let defaultValue = dailyMascots[2]
+}
+
+private extension EnvironmentValues {
+    var widgetMascot: DailyMascot {
+        get { self[WidgetMascotKey.self] }
+        set { self[WidgetMascotKey.self] = newValue }
+    }
 }
 
 struct FavoritesWidgetView: View {
@@ -43,6 +70,7 @@ struct FavoritesWidgetView: View {
                 )
                 .padding(insetBleed)
             content
+                .environment(\.widgetMascot, dailyMascot(on: entry.date))
                 .padding(insetBleed + insetFrame)
         }
         .widgetURL(backgroundURL)
@@ -198,6 +226,7 @@ private struct RoomChip: View {
 private struct CountdownFrame<Figures: View>: View {
     let colors: FavoritesWidgetSnapshot.Colors
     let medium: Bool
+    @Environment(\.widgetMascot) private var mascot
     @ViewBuilder let figures: () -> Figures
 
     var body: some View {
@@ -209,8 +238,8 @@ private struct CountdownFrame<Figures: View>: View {
                 if medium {
                     Spacer(minLength: 0)
                     Mascot(
-                        artwork: WidgetArtworks.mascotC,
-                        size: mascotCSize,
+                        artwork: mascot.artwork,
+                        size: mascot.size(height: 30),
                         color: Color(argbHex: colors.onSurfaceVariant)
                     )
                 }
@@ -278,6 +307,7 @@ private struct EventDayContent: View {
 // MARK: - Empty and today done
 
 private struct DayPromptContent: View {
+    @Environment(\.widgetMascot) private var mascot
     let message: String
     let hint: String
     let otherDayFavorites: Int
@@ -311,11 +341,11 @@ private struct DayPromptContent: View {
                     }
                     Spacer(minLength: 0)
                 }
-                .padding(.trailing, mascotClearance(medium: medium))
+                .padding(.trailing, mascotClearance(medium: medium, mascot: mascot))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 Mascot(
-                    artwork: WidgetArtworks.mascotD,
-                    size: mascotDSize(medium: medium),
+                    artwork: mascot.artwork,
+                    size: mascot.size(height: medium ? 34 : 30),
                     color: Color(argbHex: colors.onSurfaceVariant)
                 )
             }
@@ -327,6 +357,7 @@ private struct DayPromptContent: View {
 // MARK: - Post-conference and day wrap-up
 
 private struct FarewellContent: View {
+    @Environment(\.widgetMascot) private var mascot
     let message: String
     let secondary: String?
     let colors: FavoritesWidgetSnapshot.Colors
@@ -352,8 +383,8 @@ private struct FarewellContent: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     Mascot(
-                        artwork: WidgetArtworks.mascotB,
-                        size: mascotBSize,
+                        artwork: mascot.artwork,
+                        size: mascot.size(height: 34),
                         color: Color(argbHex: colors.onSurfaceVariant)
                     )
                 }
